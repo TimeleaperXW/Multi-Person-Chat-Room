@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Welcome to Multi-Person Chat Room</title>
+	<meta charset="UTF-8" />
+	<style type="text/css">	
+	#usn {
+	margin-top: 10px;
+	width: 200px;
+	height: 30px;
+	border: thin solid rgb(0,0,0);
+	}
+	#submitusn {
+	margin-left: 20px;
+	width: 70px;
+	height: 30px;
+	}
+	#youname {
+	width: 150px;
+	height: 30px;
+	}
+	#msgwd {
+	margin-top: 10px;
+	width: 1000px;
+	height: 500px;
+	border: thin solid rgb(0,0,0);
+	}
+	#ipw {
+	margin-top: 10px;
+	width: 800px;
+	height: 100px;
+	border: thin solid rgb(0,0,0);
+	}
+	#sendbtn {
+	margin-top: 8px;
+	margin-left: 10px;
+	width: 180px;
+	height: 100px;
+	}
+	#title{
+	margin-top: 30px;
+	}
+	#chkstt {
+	mairgin-left: 500px;
+	}
+	#exit {
+	margin-left:20px;
+	}
+	</style>
+	<script src="/socket.io/socket.io.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+</head>
+<body>
+	<div id="welcome">Please enter your username here:</div>
+	<div id="login"><input id="usn" type="text" value="" /><input id="submitusn" type="button" onclick="userLogin()" value="Login" /></div>
+	<div id="title">Multi-Person Chat Room <input id="chkstt" type="button" onclick="sendRequest(1)" value="Check Status" /><input id="exit" type="button" onclick="sendRequest(2)" value="Exit" /></div>
+	<div id="yourname">Your Name</div>
+	<div id="msgwd"><ul id="messages"></ul></div>
+	<input id="ipw" type="text" value="This is the input window" /><input id="sendbtn" type="button" onclick="sendMessage()" value="Send" />
+	<script type="text/javascript">
+		var socket = io();
+		var username = "";
+		
+		// send a login request (a username included) to ask for the connection with the server
+		function userLogin() {
+			username = $('#usn').val();
+			document.getElementById("yourname").innerHTML = username;
+			socket.emit('userLogin', username);
+		}
+		
+		// send CHECKSTAT or EXIT request
+		function sendRequest(rqst){
+		  	var source = username;
+		  	var request = "";
+			// CHECKSTAT asks for the list of current users in the chatroom.  EXIT asks for the disconnection with the server
+			if (rqst == 1) {
+				request = "-CHECKSTAT";
+			    socket.emit('clientRqst', source, request);
+		  	} else if (rqst == 2) {
+				request = "-EXIT";
+				socket.emit('clientRqst', source, request);
+			}
+		  	return false;
+		}
+		
+		// send chat message
+		function sendMessage () {
+			var source = username;  //**************
+		  	var message = $('#ipw').val();
+			socket.emit('clientMsg', source, message);
+			$('#ipw').val('');
+			return false;
+		}
+		
+		// receive a system alert when the chosen username already exists on the server
+		socket.on('repeatedName', function(content){
+			color = 'rgb(255,0,0)';
+			$('#messages').append('<li><b style="color:' + color + '">' + 'System Alert' + '</b>: ' + content + '</li>');
+		})
+
+		// receive system alerts sent by the server or chat messages sent by other clients, differentiated by the color of text
+		socket.on('clientMsg', function(source, time, content){
+		  	var myself = username;
+		  	var color = '';
+		  	if (source == myself){
+		  		color = 'rgb(102,153,255)';
+				$('#messages').append('<li><b style="color:' + color + '">' + source + '</b>: ' + time + '<br/>' + content + '</li>');
+		  	} else if (source == 'Server') {
+		  		color = 'rgb(255,0,0)';
+				$('#messages').append('<li><b style="color:' + color + '">' + 'System Alert' + '</b>: ' + time + '<br/>' + content + '</li>');
+		  	} else {
+		  		color ='rgb(0,0,0)';
+				$('#messages').append('<li><b style="color:' + color + '">' + source + '</b>: ' + time + '<br/>' + content + '</li>');
+		  	}
+		});
+		
+		// receive the server's response to the CHECKSTAT request
+		socket.on('userlist', function(users) {
+		  	var showAll = '';
+		  	for(var i = 0; i < users.length; i++){
+		    	showAll = showAll + '<b> ' + users[i]+' /  </b>';
+		  	}
+		  	$('#messages').append('<li><b style="color:' + 'rgb(51,204,102)' + '">' + 'Current Users' + '</b>: ' + showAll + '</li>');
+		});
+
+		
+	</script>
+</body>
+</html>
